@@ -89,18 +89,19 @@ const SOS_TAGS: SosTag[] = [
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('anaci_bg_auth') === '1';
+      return sessionStorage.getItem('anaci_bg_session_v2') === 'authenticated';
     } catch {
       return false;
     }
   });
-  const [loginId, setLoginId] = useState('direzione@serrastudio.it');
+  const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [pendingSectionAfterLogin, setPendingSectionAfterLogin] = useState<ActiveSection>('DASHBOARD');
 
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
     try {
-      const saved = localStorage.getItem('anaci_bg_role') as UserRole | null;
+      const saved = sessionStorage.getItem('anaci_bg_role_v2') as UserRole | null;
       return saved && DEMO_USERS[saved] ? saved : 'ASSOCIATO';
     } catch {
       return 'ASSOCIATO';
@@ -118,60 +119,54 @@ export default function App() {
 
     if (
       (idClean === 'direzione@serrastudio.it' || idClean === 'admin@anacibergamo.it' || idClean === 'admin' || idClean === 'bg-0102') &&
-      (passClean === 'U26m54jzkcHw@re4' || passClean === 'anaci2026')
+      passClean === 'U26m54jzkcHw@re4'
     ) {
       setCurrentRole('ADMIN');
+      setActiveSection(pendingSectionAfterLogin);
       setIsAuthenticated(true);
       setLoginError('');
       try {
-        localStorage.setItem('anaci_bg_auth', '1');
-        localStorage.setItem('anaci_bg_role', 'ADMIN');
+        sessionStorage.setItem('anaci_bg_session_v2', 'authenticated');
+        sessionStorage.setItem('anaci_bg_role_v2', 'ADMIN');
       } catch {}
       return;
     }
 
     if (
-      (idClean === 'bg-1042' || idClean === 'associato@anacibergamo.it' || idClean === 'demo@anacibergamo.it' || idClean === 'marco.locatelli@studiobergamo.it') &&
-      (passClean === 'anaci2026' || passClean === 'U26m54jzkcHw@re4' || passClean === 'demo1234')
+      (idClean === 'bg-1042' || idClean === 'associato@anacibergamo.it' || idClean === 'marco.locatelli@studiobergamo.it') &&
+      (passClean === 'anaci2026' || passClean === 'U26m54jzkcHw@re4')
     ) {
       setCurrentRole('ASSOCIATO');
+      setActiveSection(pendingSectionAfterLogin);
       setIsAuthenticated(true);
       setLoginError('');
       try {
-        localStorage.setItem('anaci_bg_auth', '1');
-        localStorage.setItem('anaci_bg_role', 'ASSOCIATO');
+        sessionStorage.setItem('anaci_bg_session_v2', 'authenticated');
+        sessionStorage.setItem('anaci_bg_role_v2', 'ASSOCIATO');
       } catch {}
       return;
     }
 
-    if (passClean === 'U26m54jzkcHw@re4' || passClean === 'anaci2026') {
-      setIsAuthenticated(true);
-      setLoginError('');
-      try {
-        localStorage.setItem('anaci_bg_auth', '1');
-      } catch {}
-      return;
-    }
-
-    setLoginError('Credenziali non valide. Usa direzione@serrastudio.it / U26m54jzkcHw@re4 oppure BG-1042 / anaci2026.');
+    setLoginError('Accesso negato: credenziali non valide. Inserisci Email/Codice Associato e Password autorizzati.');
   }
 
-  function handleQuickDemoLogin(role: UserRole, targetSection: ActiveSection = 'DASHBOARD') {
-    setCurrentRole(role);
-    setActiveSection(targetSection);
-    setIsAuthenticated(true);
-    setLoginError('');
-    try {
-      localStorage.setItem('anaci_bg_auth', '1');
-      localStorage.setItem('anaci_bg_role', role);
-    } catch {}
+  function handleProtectedActionPrompt(targetSection: ActiveSection, sectionLabel: string) {
+    setPendingSectionAfterLogin(targetSection);
+    setLoginError(`🔒 Per accedere a "${sectionLabel}" è obbligatorio autenticarsi con le proprie credenziali ANACI Bergamo.`);
+    const inputEl = document.getElementById('anaci-login-id');
+    if (inputEl) inputEl.focus();
   }
 
   function handleLogout() {
     setIsAuthenticated(false);
+    setLoginId('');
     setLoginPassword('');
+    setLoginError('');
     try {
+      sessionStorage.removeItem('anaci_bg_session_v2');
+      sessionStorage.removeItem('anaci_bg_role_v2');
       localStorage.removeItem('anaci_bg_auth');
+      localStorage.removeItem('anaci_bg_role');
     } catch {}
   }
 
@@ -518,17 +513,17 @@ export default function App() {
                 {/* Quick Actions */}
                 <div className="pt-4">
                   <p className="text-xs font-extrabold uppercase tracking-wider text-[#6EE7B7] mb-3">
-                    Scorciatoie Rapide (Quick-Actions):
+                    Moduli Riservati agli Associati (Richiede Login):
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <button
                       type="button"
-                      onClick={() => handleQuickDemoLogin('ASSOCIATO', 'AI_LEGAL_RAG')}
+                      onClick={() => handleProtectedActionPrompt('AI_LEGAL_RAG', 'Chiedi ad ANACI Bot')}
                       className="p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-left transition-all group"
                     >
                       <Bot className="w-5 h-5 text-[#6EE7B7] mb-1.5" />
-                      <div className="text-xs font-extrabold text-white group-hover:underline">
-                        Chiedi ad ANACI Bot
+                      <div className="text-xs font-extrabold text-white group-hover:underline flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Chiedi ad ANACI Bot
                       </div>
                       <p className="text-[11px] text-white/75 mt-0.5">
                         Assistente RAG Codice Civile, Cassazione e Quorum
@@ -537,12 +532,12 @@ export default function App() {
 
                     <button
                       type="button"
-                      onClick={() => handleQuickDemoLogin('ASSOCIATO', 'SOS_CONDOMINIO')}
+                      onClick={() => handleProtectedActionPrompt('SOS_CONDOMINIO', 'SOS Condominio')}
                       className="p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-left transition-all group"
                     >
                       <MessageSquareWarning className="w-5 h-5 text-[#FCA5A5] mb-1.5" />
-                      <div className="text-xs font-extrabold text-white group-hover:underline">
-                        SOS Condominio
+                      <div className="text-xs font-extrabold text-white group-hover:underline flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> SOS Condominio
                       </div>
                       <p className="text-[11px] text-white/75 mt-0.5">
                         Casi critici anonimizzati & Pareri Centro Studi
@@ -551,12 +546,12 @@ export default function App() {
 
                     <button
                       type="button"
-                      onClick={() => handleQuickDemoLogin('ASSOCIATO', 'EVENTI')}
+                      onClick={() => handleProtectedActionPrompt('EVENTI', 'Calendario & Eventi')}
                       className="p-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-left transition-all group"
                     >
                       <Calendar className="w-5 h-5 text-[#FDE047] mb-1.5" />
-                      <div className="text-xs font-extrabold text-white group-hover:underline">
-                        Calendario & Eventi
+                      <div className="text-xs font-extrabold text-white group-hover:underline flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Calendario & Eventi
                       </div>
                       <p className="text-[11px] text-white/75 mt-0.5">
                         Locandine, Sponsor, Temi e Crediti DM 140/2014
@@ -578,7 +573,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#008051]">
-                      Autenticazione Associati & Direttivo
+                      Autenticazione Obbligatoria Associati & Direttivo
                     </span>
                     <h2 className="text-2xl font-extrabold text-[#001A10] mt-0.5">
                       Accedi ad ANACI BG Hub
@@ -597,38 +592,36 @@ export default function App() {
 
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-extrabold uppercase text-[#001A10] mb-1">
-                      Email o Codice Associato ANACI
+                    <label
+                      htmlFor="anaci-login-id"
+                      className="block text-xs font-extrabold uppercase text-[#001A10] mb-1"
+                    >
+                      Email o Codice Associato ANACI *
                     </label>
                     <input
+                      id="anaci-login-id"
                       type="text"
                       required
+                      autoComplete="username"
                       value={loginId}
                       onChange={(e) => setLoginId(e.target.value)}
-                      placeholder="Es. direzione@serrastudio.it oppure BG-1042"
+                      placeholder="Inserisci Email o Codice Associato..."
                       className="w-full px-3.5 py-2.5 rounded-lg border border-[#D4E4DC] text-sm text-[#001A10] focus:outline-none focus:border-[#008051]"
                     />
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-extrabold uppercase text-[#001A10]">
-                        Password
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLoginId('direzione@serrastudio.it');
-                          setLoginPassword('U26m54jzkcHw@re4');
-                        }}
-                        className="text-[11px] font-bold text-[#008051] hover:underline"
-                      >
-                        Precompila Credenziali Admin
-                      </button>
-                    </div>
+                    <label
+                      htmlFor="anaci-login-password"
+                      className="block text-xs font-extrabold uppercase text-[#001A10] mb-1"
+                    >
+                      Password *
+                    </label>
                     <input
+                      id="anaci-login-password"
                       type="password"
                       required
+                      autoComplete="current-password"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       placeholder="Inserisci la password..."
@@ -641,36 +634,19 @@ export default function App() {
                     className="w-full btn-anaci-primary !py-3 text-sm font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md"
                   >
                     <Lock className="w-4 h-4" />
-                    Accedi alla Piattaforma
+                    Accedi alla Piattaforma Riservata
                   </button>
                 </form>
 
-                {/* Accesso Rapido Demo Ruoli */}
-                <div className="pt-4 border-t border-gray-100 space-y-2.5">
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#5F6B65]">
-                    Accesso Rapido Demo (Per Presentazione Consiglio Direttivo):
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDemoLogin('ADMIN', 'DASHBOARD')}
-                      className="px-3 py-2 rounded-lg bg-[#0A2540] text-white text-xs font-bold hover:opacity-95 text-left"
-                    >
-                      👑 Direttivo / Admin
-                      <span className="block text-[10px] text-white/75 font-normal">
-                        direzione@serrastudio.it
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDemoLogin('ASSOCIATO', 'DASHBOARD')}
-                      className="px-3 py-2 rounded-lg bg-[#008051] text-white text-xs font-bold hover:opacity-95 text-left"
-                    >
-                      🏢 Associato #BG-1042
-                      <span className="block text-[10px] text-white/75 font-normal">
-                        Dott. Marco Locatelli
-                      </span>
-                    </button>
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="p-3 rounded-lg bg-[#EFF7F3] border border-[#008051]/20 text-xs text-[#001A10] space-y-1">
+                    <div className="font-bold text-[#008051] flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4" />
+                      Accesso Protetto da Credenziali
+                    </div>
+                    <p className="text-[11px] text-[#444444] leading-relaxed">
+                      La consultazione delle bacheche interne, dei pareri del Centro Studi, dei preventivi ex art. 1129 c.c. e dei recapiti diretti dei fornitori è riservata esclusivamente agli Associati ANACI Bergamo autenticati.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -682,7 +658,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Vetrina Pubblica / Semi-Pubblica "I Nostri Partner e Sponsor" */}
+          {/* Vetrina Pubblica "I Nostri Partner e Sponsor" (Sola anteprima loghi, richiede login per aprire le schede interne) */}
           <div className="card-anaci p-6 sm:p-8 space-y-5 bg-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
               <div>
@@ -695,11 +671,11 @@ export default function App() {
               </div>
               <button
                 type="button"
-                onClick={() => handleQuickDemoLogin('ASSOCIATO', 'PARTNERS')}
+                onClick={() => handleProtectedActionPrompt('PARTNERS', 'Convenzioni & Contatti Partner')}
                 className="btn-anaci-outline text-xs py-2.5 px-4 flex items-center gap-1.5 self-start sm:self-auto"
               >
-                <Handshake className="w-4 h-4 text-[#008051]" />
-                <span>Scopri tutte le convenzioni / Tutti i partner</span>
+                <Lock className="w-3.5 h-3.5 text-[#008051]" />
+                <span>Accedi per aprire le convenzioni e i contatti</span>
               </button>
             </div>
 
@@ -710,7 +686,7 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setSelectedPartner(p);
-                    handleQuickDemoLogin('ASSOCIATO', 'PARTNERS');
+                    handleProtectedActionPrompt('PARTNERS', `Scheda Convenzione ${p.companyName}`);
                   }}
                   className="p-3 rounded-xl border border-[#D4E4DC] bg-[#F9FBFA] hover:bg-[#EFF7F3] hover:border-[#008051] transition-all text-left group"
                 >
