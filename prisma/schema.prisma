@@ -1,0 +1,374 @@
+// ============================================================================
+// ANACI BG HUB - PRISMA ORM SCHEMA
+// Compatibile con PostgreSQL / Supabase / Neon
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ASSOCIATO
+  ESPERTO
+  PARTNER
+  ADMIN
+}
+
+enum TicketStatus {
+  APERTO
+  IN_LAVORAZIONE
+  RISOLTO
+  ARCHIVIATO
+}
+
+enum UrgencyLevel {
+  BASSA
+  NORMALE
+  ALTA
+  CRITICA
+}
+
+enum PartnerCategory {
+  ENERGIA_CALORE
+  IMPIANTI_SICUREZZA
+  PULIZIE_MULTISERVIZI
+  STUDIO_FISCO_CREDITI
+}
+
+model User {
+  id               String   @id @default(uuid())
+  codiceAssociato  String?  @unique @map("codice_associato")
+  email            String   @unique
+  passwordHash     String   @map("password_hash")
+  role             UserRole @default(ASSOCIATO)
+  fullName         String   @map("full_name")
+  studioName       String?  @map("studio_name")
+  phone            String?
+  zonaOperativa    String   @default("BERGAMO_CITTA") @map("zona_operativa")
+  specialty        String?
+  cfpMaturatiAnno  Int      @default(0) @map("cfp_maturati_anno")
+  cfpObiettivoAnno Int      @default(15) @map("cfp_obiettivo_anno")
+  isVerified       Boolean  @default(true) @map("is_verified")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  quoteRequests    PartnerQuoteRequest[]
+  partnerReviews   PartnerReview[]
+  sosPosts         SosPost[]
+  sosReplies       SosReply[]
+  aiSessions       AiChatSession[]
+  roomBookings     RoomBooking[]
+  condoQuotes      CondoManagementQuote[]
+
+  @@map("users")
+}
+
+model Partner {
+  id                 Int             @id @default(autoincrement())
+  slug               String          @unique
+  companyName        String          @map("company_name")
+  category           PartnerCategory
+  categoryLabel      String          @map("category_label")
+  sector             String
+  referentName       String?         @map("referent_name")
+  phone              String
+  email              String?
+  logoInitials       String          @map("logo_initials")
+  badgeConvenzione   String          @default("Convenzione Ufficiale ANACI BG") @map("badge_convenzione")
+  descrizioneServizi String?         @map("descrizione_servizi")
+  vantaggiAssociati  String?         @map("vantaggi_associati")
+  zoneCoperte        String          @default("Bergamo e Provincia") @map("zone_coperte")
+  ratingMedio        Float           @default(4.8) @map("rating_medio")
+  totaleRecensioni   Int             @default(0) @map("totale_recensioni")
+  isFeatured         Boolean         @default(true) @map("is_featured")
+
+  quoteRequests      PartnerQuoteRequest[]
+  reviews            PartnerReview[]
+
+  @@map("partners")
+}
+
+model PartnerQuoteRequest {
+  id                    String       @id @default(uuid())
+  partnerId             Int          @map("partner_id")
+  associateId           String       @map("associate_id")
+  studioName            String       @map("studio_name")
+  condominioRiferimento String       @map("condominio_riferimento")
+  indirizzoCondominio   String?      @map("indirizzo_condominio")
+  tipoRichiesta         String       @map("tipo_richiesta")
+  urgenza               UrgencyLevel @default(NORMALE)
+  noteDettaglio         String       @map("note_dettaglio")
+  stato                 String       @default("INVIATA")
+  createdAt             DateTime     @default(now()) @map("created_at")
+
+  partner               Partner      @relation(fields: [partnerId], references: [id])
+  associate             User         @relation(fields: [associateId], references: [id])
+
+  @@map("partner_quote_requests")
+}
+
+model PartnerReview {
+  id                  String   @id @default(uuid())
+  partnerId           Int      @map("partner_id")
+  associateId         String   @map("associate_id")
+  rating              Int
+  commentoRiservato   String   @map("commento_riservato")
+  isAnonymousToPartner Boolean @default(true) @map("is_anonymous_to_partner")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  partner             Partner  @relation(fields: [partnerId], references: [id])
+  associate           User     @relation(fields: [associateId], references: [id])
+
+  @@map("partner_reviews")
+}
+
+model SosPost {
+  id                        String       @id @default(uuid())
+  authorId                  String       @map("author_id")
+  isAnonymous               Boolean      @default(false) @map("is_anonymous")
+  anonymousAlias            String?      @map("anonymous_alias")
+  title                     String
+  content                   String
+  primaryTag                String       @map("primary_tag")
+  zonaCondominio            String       @default("BERGAMO_CITTA") @map("zona_condominio")
+  urgency                   UrgencyLevel @default(NORMALE)
+  status                    TicketStatus @default(APERTO)
+  richiedeParereCentroStudi Boolean      @default(false) @map("richiede_parere_centro_studi")
+  upvotesCount              Int          @default(0) @map("upvotes_count")
+  createdAt                 DateTime     @default(now()) @map("created_at")
+
+  author                    User         @relation(fields: [authorId], references: [id])
+  replies                   SosReply[]
+
+  @@map("sos_posts")
+}
+
+model SosReply {
+  id                      String   @id @default(uuid())
+  postId                  String   @map("post_id")
+  authorId                String   @map("author_id")
+  isAnonymous             Boolean  @default(false) @map("is_anonymous")
+  isOfficialExpertOpinion Boolean  @default(false) @map("is_official_expert_opinion")
+  riferimentiNormativi    String?  @map("riferimenti_normativi")
+  content                 String
+  helpfulVotesCount       Int      @default(0) @map("helpful_votes_count")
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  post                    SosPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author                  User     @relation(fields: [authorId], references: [id])
+
+  @@map("sos_replies")
+}
+
+model AiChatSession {
+  id              String          @id @default(uuid())
+  userId          String          @map("user_id")
+  title           String
+  knowledgeScopes String[]        @map("knowledge_scopes")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  user            User            @relation(fields: [userId], references: [id])
+  messages        AiChatMessage[]
+
+  @@map("ai_chat_sessions")
+}
+
+model AiChatMessage {
+  id                    String        @id @default(uuid())
+  sessionId             String        @map("session_id")
+  sender                String
+  content               String
+  citedSources          Json          @default("[]") @map("cited_sources")
+  generatedArtifactType String?       @map("generated_artifact_type")
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  session               AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("ai_chat_messages")
+}
+
+model RoomBooking {
+  id                     String   @id @default(uuid())
+  roomName               String   @map("room_name")
+  associateId            String   @map("associate_id")
+  condominioAssemblea    String   @map("condominio_assemblea")
+  bookingDate            DateTime @map("booking_date")
+  startTime              String   @map("start_time")
+  endTime                String   @map("end_time")
+  partecipantiStimati    Int      @default(20) @map("partecipanti_stimati")
+  richiedeVideoconferenza Boolean @default(true) @map("richiede_videoconferenza")
+  stato                  String   @default("CONFERMATA")
+
+  associate              User     @relation(fields: [associateId], references: [id])
+
+  @@map("room_bookings")
+}
+
+model InstitutionalDocument {
+  id                   String           @id @default(uuid())
+  slug                 String           @unique
+  tipoDocumento        String           @map("tipo_documento")
+  titolo               String
+  versione             String
+  dataApprovazione     DateTime         @map("data_approvazione")
+  enteApprovazione     String?          @map("ente_approvazione")
+  descrizioneSintetica String?          @map("descrizione_sintetica")
+  filePdfUrl           String?          @map("file_pdf_url")
+  isCurrent            Boolean          @default(true) @map("is_current")
+  richiedePresaVisione Boolean          @default(true) @map("richiede_presa_visione")
+  createdAt            DateTime         @default(now()) @map("created_at")
+
+  articles             StatuteArticle[]
+
+  @@map("institutional_documents")
+}
+
+model StatuteArticle {
+  id                    String                @id @default(uuid())
+  documentId            String                @map("document_id")
+  titoloSezione         String                @map("titolo_sezione")
+  numeroArticolo        Int                   @map("numero_articolo")
+  etichettaArticolo     String                @map("etichetta_articolo")
+  rubrica               String
+  contenutoTesto        String                @map("contenuto_testo")
+  paroleChiave          String[]              @map("parole_chiave")
+  ordineVisualizzazione Int                   @map("ordine_visualizzazione")
+
+  document              InstitutionalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("statute_articles")
+}
+
+model TariffBenchmarkBg {
+  id                   Int     @id @default(autoincrement())
+  codiceVoce           String  @unique @map("codice_voce")
+  categoria            String
+  descrizione          String
+  unitaMisura          String  @map("unita_misura")
+  valoreConsigliato    Float   @map("valore_consigliato")
+  valoreMinimo         Float?  @map("valore_minimo")
+  valoreMassimo        Float?  @map("valore_massimo")
+  riferimentoNormativo String? @map("riferimento_normativo")
+  attivo               Boolean @default(true)
+
+  @@map("tariff_benchmarks_bg")
+}
+
+model CondoManagementQuote {
+  id                              String   @id @default(uuid())
+  numeroPreventivo                String   @unique @map("numero_preventivo")
+  userId                          String   @map("user_id")
+  condominioNome                  String   @map("condominio_nome")
+  indirizzoCondominio             String?  @map("indirizzo_condominio")
+  zona                            String   @default("BERGAMO_CITTA")
+  unitaPrincipali                 Int      @default(10) @map("unita_principali")
+  pertinenzeBoxCantine            Int      @default(10) @map("pertinenze_box_cantine")
+  scalePalazzine                  Int      @default(1) @map("scale_palazzine")
+  numAscensori                    Int      @default(1) @map("num_ascensori")
+  riscaldamentoCentralizzato      Boolean  @default(false) @map("riscaldamento_centralizzato")
+  contabilizzazioneCaloreUni10200 Boolean  @default(false) @map("contabilizzazione_calore_uni10200")
+  areaVerdeCondominiale           Boolean  @default(false) @map("area_verde_condominiale")
+  portineriaCustode               Boolean  @default(false) @map("portineria_custode")
+  supercondominio                 Boolean  @default(false) @map("supercondominio")
+  regimeFiscale                   String   @default("ORDINARIO_IVA") @map("regime_fiscale")
+  cassaPrevidenzialePct           Float    @default(4.0) @map("cassa_previdenziale_pct")
+  aliquotaIvaPct                  Float    @default(22.0) @map("aliquota_iva_pct")
+  compensoBaseAnnuo               Float    @map("compenso_base_annuo")
+  maggiorazioneImpianti           Float    @map("maggiorazione_impianti")
+  compensoAdempimentiFiscali      Float    @map("compenso_adempimenti_fiscali")
+  rimborsoSpeseForfettario        Float    @map("rimborso_spese_forfettario")
+  totaleImponibileStudio          Float    @map("totale_imponibile_studio")
+  totaleLordoAnnuoStudio          Float    @map("totale_lordo_annuo_studio")
+  costoMensilePerUnita            Float    @map("costo_mensile_per_unita")
+  stimaBudgetOrdinarioCondominio  Json     @default("{}") @map("stima_budget_ordinario_condominio")
+  dettaglioVociJson               Json     @map("dettaglio_voci_json")
+  testoPropostaMandato            String   @map("testo_proposta_mandato")
+  stato                           String   @default("BOZZA")
+  createdAt                       DateTime @default(now()) @map("created_at")
+
+  user                            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("condo_management_quotes")
+}
+
+model MemberAssembly {
+  id                     String                  @id @default(uuid())
+  codiceAssemblea        String                  @unique @map("codice_assemblea")
+  titolo                 String
+  convocazioneTipo       String                  @map("convocazione_tipo")
+  dataAssemblea          DateTime                @map("data_assemblea")
+  locationFisica         String                  @map("location_fisica")
+  linkStreamingOnline    String?                 @map("link_streaming_online")
+  qrCodeIngressoToken    String                  @unique @map("qr_code_ingresso_token")
+  qrCodeOnlineToken      String                  @unique @map("qr_code_online_token")
+  cfpRiconosciuti        Int                     @default(3) @map("cfp_riconosciuti")
+  totaleSociAventiDiritto Int                    @default(320) @map("totale_soci_aventi_diritto")
+  quorumRichiesto        Int                     @default(107) @map("quorum_richiesto")
+  stato                  String                  @default("IN_CORSO")
+  createdAt              DateTime                @default(now()) @map("created_at")
+
+  accreditations         AssemblyAccreditation[]
+  polls                  AssemblyPoll[]
+
+  @@map("member_assemblies")
+}
+
+model AssemblyAccreditation {
+  id                       String         @id @default(uuid())
+  assemblyId               String         @map("assembly_id")
+  userId                   String         @map("user_id")
+  modalitaAccredito        String         @map("modalita_accredito")
+  qrTokenUtilizzato        String         @map("qr_token_utilizzato")
+  quotaAssociativaRegolare Boolean        @default(true) @map("quota_associativa_regolare")
+  cfpDm140Regolari         Boolean        @default(true) @map("cfp_dm140_regolari")
+  delegheCodiciSoci        String[]       @map("deleghe_codici_soci")
+  pesoVotoTotale           Int            @default(1) @map("peso_voto_totale")
+  codiceBadgeAccredito     String         @unique @map("codice_badge_accredito")
+  accreditedAt             DateTime       @default(now()) @map("accredited_at")
+
+  assembly                 MemberAssembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  votes                    AssemblyVote[]
+
+  @@map("assembly_accreditations")
+}
+
+model AssemblyPoll {
+  id                 String         @id @default(uuid())
+  assemblyId         String         @map("assembly_id")
+  numeroPuntoOdg     Int            @map("numero_punto_odg")
+  titoloVotazione    String         @map("titolo_votazione")
+  descrizioneQuesito String         @map("descrizione_quesito")
+  tipoScrutinio      String         @map("tipo_scrutinio")
+  maxPreferenze      Int            @default(1) @map("max_preferenze")
+  opzioniJson        Json           @map("opzioni_json")
+  statoVotazione     String         @default("APERTA") @map("stato_votazione")
+  createdAt          DateTime       @default(now()) @map("created_at")
+
+  assembly           MemberAssembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  votes              AssemblyVote[]
+
+  @@map("assembly_polls")
+}
+
+model AssemblyVote {
+  id               String                @id @default(uuid())
+  pollId           String                @map("poll_id")
+  accreditationId  String                @map("accreditation_id")
+  userId           String                @map("user_id")
+  scelteEspresse   String[]              @map("scelte_espresse")
+  pesoVotoApplicato Int                  @default(1) @map("peso_voto_applicato")
+  modalitaPresenza String                @map("modalita_presenza")
+  ricevutaHash     String                @unique @map("ricevuta_hash")
+  votedAt          DateTime              @default(now()) @map("voted_at")
+
+  poll             AssemblyPoll          @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  accreditation    AssemblyAccreditation @relation(fields: [accreditationId], references: [id], onDelete: Cascade)
+
+  @@map("assembly_votes")
+}
+
+

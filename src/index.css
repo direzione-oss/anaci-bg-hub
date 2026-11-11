@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --e-global-color-primary: #008051;
+  --e-global-color-primary-dark: #006741;
+  --e-global-color-forest: #001A10;
+  --e-global-color-secondary: #C23030;
+  --e-global-color-text: #444444;
+  --e-global-color-heading: #333333;
+  --e-global-color-accent: #009B62;
+  --e-global-color-mint: #EFF7F3;
+  --e-global-color-white: #FFFFFF;
+  --e-global-color-light-gray: #F6F6F6;
+  --e-global-color-dark-footer: #222529;
+}
+
+@layer base {
+  body {
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+    background-color: #EFF7F3;
+    color: #444444;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: #333333;
+  }
+}
+
+@layer components {
+  /* Stile Bottone Primario ANACI.it (#008051 -> Hover #C23030, border 2px, radius 6px) */
+  .btn-anaci-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-[#008051] text-white font-medium text-sm px-4 py-2.5 rounded-[6px] border-2 border-[#008051] transition-all duration-200 hover:bg-[#C23030] hover:border-[#C23030] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#008051]/40;
+    letter-spacing: -0.5px;
+  }
+
+  /* Stile Bottone Secondario Bianco ANACI.it (#FFFFFF -> Hover #EFF7F3 con testo #008051) */
+  .btn-anaci-white {
+    @apply inline-flex items-center justify-center gap-2 bg-white text-[#444444] font-semibold text-sm px-4 py-2.5 rounded-[6px] border-2 border-white transition-all duration-200 hover:bg-[#EFF7F3] hover:border-[#EFF7F3] hover:text-[#008051];
+    letter-spacing: -0.5px;
+  }
+
+  /* Stile Bottone Outline Verde ANACI.it */
+  .btn-anaci-outline {
+    @apply inline-flex items-center justify-center gap-2 bg-white text-[#008051] font-medium text-sm px-4 py-2 rounded-[6px] border-2 border-[#008051] transition-all duration-200 hover:bg-[#008051] hover:text-white;
+    letter-spacing: -0.5px;
+  }
+
+  /* Stile Card Ufficiale ANACI.it (Sfondo #FFFFFF, radius 10px, ombra 0 0 10px rgba(0,0,0,0.1)) */
+  .card-anaci {
+    @apply bg-white rounded-[10px] border border-[#009B62]/15;
+    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom subtle scrollbars in tema verde ANACI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #EFF7F3;
+}
+::-webkit-scrollbar-thumb {
+  background: #009B6280;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #008051;
+}
+
